@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1e1b4b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <!-- Red quadrant -->
+  <rect x="48" y="48" width="196" height="196" rx="28" fill="#ef4444" opacity="0.85"/>
+  <circle cx="146" cy="146" r="20" fill="white" opacity="0.9"/>
+  <!-- Green quadrant -->
+  <rect x="268" y="48" width="196" height="196" rx="28" fill="#22c55e" opacity="0.85"/>
+  <circle cx="318" cy="98" r="16" fill="white" opacity="0.9"/>
+  <circle cx="414" cy="194" r="16" fill="white" opacity="0.9"/>
+  <!-- Yellow quadrant -->
+  <rect x="48" y="268" width="196" height="196" rx="28" fill="#eab308" opacity="0.85"/>
+  <circle cx="98" cy="318" r="16" fill="white" opacity="0.9"/>
+  <circle cx="194" cy="414" r="16" fill="white" opacity="0.9"/>
+  <!-- Blue quadrant -->
+  <rect x="268" y="268" width="196" height="196" rx="28" fill="#3b82f6" opacity="0.85"/>
+  <circle cx="366" cy="366" r="20" fill="white" opacity="0.9"/>
+  <!-- Center star -->
+  <polygon points="256,180 272,232 326,232 282,262 298,314 256,284 214,314 230,262 186,232 240,232" fill="white" opacity="0.9"/>
+</svg>

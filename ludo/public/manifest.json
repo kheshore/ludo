@@ -1,0 +1,36 @@
+{
+  "name": "Ludo - Play & Win",
+  "short_name": "Ludo",
+  "description": "A modern, phone-first Ludo game. Play with friends!",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
