@@ -109,14 +109,18 @@ export function rollDice(): number {
 
 /**
  * Convert a piece's track position to absolute board position
- * considering the player's color offset
+ * considering the player's color offset.
+ *
+ * The main track loop has 52 physical cells (indices 0-51 in MAIN_TRACK_COORDS).
+ * Each player travels 51 of those cells before entering their own home stretch,
+ * so TRACK_LENGTH is 51 while the modulo stays at 52.
  */
 export function getAbsoluteTrackPosition(trackPos: number, color: PlayerColor): number {
   if (trackPos < 0) return -1; // home
   if (trackPos >= TRACK_LENGTH) return -2; // in home stretch or finished
 
   const startPos = START_POSITIONS[color];
-  return (startPos + trackPos) % TRACK_LENGTH;
+  return (startPos + trackPos) % 52; // 52 = physical size of MAIN_TRACK_COORDS loop
 }
 
 /**

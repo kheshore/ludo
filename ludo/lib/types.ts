@@ -184,9 +184,9 @@ export interface ClientToServerEvents {
 
 // --- Board Constants ---
 export const BOARD_SIZE = 15;
-export const TRACK_LENGTH = 52; // main track squares
-export const HOME_STRETCH_LENGTH = 5; // final 5 squares before finish
-export const TOTAL_PATH_LENGTH = 57; // 52 + 5 home stretch
+export const TRACK_LENGTH = 51; // relative cells a piece travels before entering its home stretch
+export const HOME_STRETCH_LENGTH = 6; // 6 squares leading to center
+export const TOTAL_PATH_LENGTH = 57; // 51 + 6 home stretch
 
 export const SAFE_POSITIONS = [0, 8, 13, 21, 26, 34, 39, 47]; // star positions
 
