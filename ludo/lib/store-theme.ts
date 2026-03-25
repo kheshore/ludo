@@ -7,6 +7,13 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import type { BoardThemeId, PawnStyleId, DiceStyleId } from './themes';
 import { BOARD_THEMES, DICE_STYLES, PAWN_STYLES } from './themes';
 
+// Clean up all old versioned keys so Zustand never sees stale versioned state
+if (typeof window !== 'undefined') {
+  ['ludo-theme', 'ludo-theme-v1', 'ludo-theme-v2', 'ludo-theme-v3', 'ludo-theme-v4'].forEach(
+    (key) => localStorage.removeItem(key),
+  );
+}
+
 interface ThemeState {
   boardThemeId: BoardThemeId;
   pawnStyleId: PawnStyleId;
@@ -31,8 +38,10 @@ export const useThemeStore = create<ThemeState>()(
       setDiceStyle:  (id) => set({ diceStyleId: id }),
     }),
     {
-      name: 'ludo-theme-v3',
+      name: 'ludo-theme-v5',
       storage: createJSONStorage(() => localStorage),
+      version: 0,
+      migrate: (state: unknown) => state as ThemeState,
       // Validate rehydrated state — reset any invalid ids to defaults
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<ThemeState>;

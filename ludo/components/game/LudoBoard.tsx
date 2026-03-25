@@ -417,12 +417,9 @@ function BoardCell({
 
   // ── Center cell ──
   if (isCenter) {
+    // Pieces are rendered in the FinishedPiecesOverlay above CenterOverlay, not here
     return (
-      <div style={{ background: theme.centerBg, border: `1px solid ${theme.trackBorder}`, position: 'relative', zIndex: 0 }}>
-        <div style={{ position: 'relative', zIndex: 25 }}>
-          {renderPieces()}
-        </div>
-      </div>
+      <div style={{ background: theme.centerBg, border: `1px solid ${theme.trackBorder}`, position: 'relative', zIndex: 0 }} />
     );
   }
 
@@ -650,23 +647,16 @@ export default function LudoBoard() {
         gridPos = HOME_ANCHORS[player.color];
       } else if (piece.state === 'active') {
         gridPos = getGridPosition(piece.trackPosition, player.color);
-      } else if (piece.state === 'finished') {
-        // Place at the last home-stretch cell for this color (just before center)
-        // HOME_STRETCH_COORDS index 5 is the center — use index 4 (one before)
-        // and distribute 4 pieces across the 4 last home-stretch slots
-        const FINISH_SLOTS: Record<PlayerColor, { row: number; col: number }[]> = {
-          red:    [{ row: 7, col: 5 }, { row: 7, col: 4 }, { row: 7, col: 3 }, { row: 7, col: 2 }],
-          green:  [{ row: 5, col: 7 }, { row: 4, col: 7 }, { row: 3, col: 7 }, { row: 2, col: 7 }],
-          yellow: [{ row: 7, col: 9 }, { row: 7, col: 10 }, { row: 7, col: 11 }, { row: 7, col: 12 }],
-          blue:   [{ row: 9, col: 7 }, { row: 10, col: 7 }, { row: 11, col: 7 }, { row: 12, col: 7 }],
-        };
-        gridPos = FINISH_SLOTS[player.color][piece.index % 4];
       }
 
-      if (gridPos) {
-        const key = `${gridPos.row}-${gridPos.col}`;
-        if (!piecePositions.has(key)) piecePositions.set(key, []);
-        piecePositions.get(key)!.push({
+      // Finished pieces go to a special key rendered in the center overlay
+      const mapKey = piece.state === 'finished'
+        ? 'finished'
+        : gridPos ? `${gridPos.row}-${gridPos.col}` : null;
+
+      if (mapKey) {
+        if (!piecePositions.has(mapKey)) piecePositions.set(mapKey, []);
+        piecePositions.get(mapKey)!.push({
           pieceId: piece.id,
           color: player.color,
           isMovable: movablePieceIds.has(piece.id),
@@ -773,6 +763,87 @@ export default function LudoBoard() {
         >
           <CenterOverlay theme={theme} />
         </div>
+
+        {/* Finished pieces overlay — one token per color in its wedge, with count badge */}
+        {(() => {
+          const finishedPieces = piecePositions.get('finished') ?? [];
+          if (finishedPieces.length === 0) return null;
+
+          // Group by color
+          const byColor = new Map<PlayerColor, number>();
+          for (const p of finishedPieces) {
+            byColor.set(p.color, (byColor.get(p.color) ?? 0) + 1);
+          }
+
+          // Wedge centroids (as fraction of the 3-cell center zone)
+          // red=left, green=top, yellow=right, blue=bottom
+          const wedgeOffset: Record<PlayerColor, { x: number; y: number }> = {
+            red:    { x: 0.22, y: 0.50 },
+            green:  { x: 0.50, y: 0.22 },
+            yellow: { x: 0.78, y: 0.50 },
+            blue:   { x: 0.50, y: 0.78 },
+          };
+          const zoneSize = cellPct * 3;
+
+          return (
+            <>
+              {Array.from(byColor.entries()).map(([color, count]) => {
+                const wo = wedgeOffset[color];
+                const left = cellPct * 6 + wo.x * zoneSize - cellPct * 0.5;
+                const top  = cellPct * 6 + wo.y * zoneSize - cellPct * 0.5;
+                // Pick any pieceId for this color to use as key
+                const pieceId = finishedPieces.find(p => p.color === color)!.pieceId;
+                return (
+                  <div
+                    key={color}
+                    style={{
+                      position: 'absolute',
+                      left:   `${left}%`,
+                      top:    `${top}%`,
+                      width:  `${cellPct}%`,
+                      height: `${cellPct}%`,
+                      zIndex: 30,
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    <PieceToken
+                      key={pieceId}
+                      pieceId={pieceId}
+                      color={color}
+                      isMovable={false}
+                      isSelected={false}
+                      isAnimating={false}
+                      size="normal"
+                      offsetX={0}
+                      offsetY={0}
+                      pawnStyle={pawnStyleId}
+                      onClick={() => {}}
+                    />
+                    {count > 1 && (() => {
+                      const cfg = COLOR_CONFIG[color];
+                      return (
+                        <div style={{
+                          position: 'absolute',
+                          top: '-4%', right: '-4%',
+                          background: cfg.dark,
+                          color: '#fff',
+                          borderRadius: '50%',
+                          width: '52%', height: '52%',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 'clamp(7px, 1.4vw, 12px)', fontWeight: 600,
+                          lineHeight: 1,
+                          zIndex: 35,
+                        }}>
+                          {count}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                );
+              })}
+            </>
+          );
+        })()}
       </div>
     </div>
   );
