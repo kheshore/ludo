@@ -17,6 +17,7 @@ import {
   executeMove,
   handleSkipTurn,
   getBotMove,
+  getMovementPath,
 } from './game-engine';
 import { soundManager } from './sounds';
 import { v4 as uuidv4 } from 'uuid';
@@ -29,6 +30,8 @@ interface GameStore {
   gameState: GameState | null;
   selectedPieceId: string | null;
   animatingPieceId: string | null;
+  /** Non-null while a piece is mid-step-animation; holds the intermediate trackPosition */
+  stepAnimationPos: { pieceId: string; trackPosition: number; color: import('./types').PlayerColor } | null;
   lastCapturedPieceId: string | null;
   showDiceResult: boolean;
 
@@ -70,6 +73,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
   gameState: null,
   selectedPieceId: null,
   animatingPieceId: null,
+  stepAnimationPos: null,
   lastCapturedPieceId: null,
   showDiceResult: false,
 
@@ -399,45 +403,107 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       return;
     }
 
-    // --- LOCAL (Quick Play): original logic ---
+    // --- LOCAL (Quick Play): step-by-step animation ---
     const diceValue = state.gameState.dice.value;
 
     try {
       const result = executeMove(state.gameState, pieceId, diceValue);
-      
-      set({ animatingPieceId: pieceId });
 
-      if (result.action === 'capture') {
-        soundManager.playCapture();
-        set({ lastCapturedPieceId: result.capturedPiece?.id || null });
-      } else if (result.action === 'enter') {
-        soundManager.playPieceEnter();
-      } else if (result.action === 'finish') {
-        soundManager.playPieceFinish();
-      } else {
+      // Find the piece and its color in the CURRENT state (before the move)
+      let movingColor: import('./types').PlayerColor = 'red';
+      for (const pl of state.gameState.players) {
+        if (pl.pieces.find(p => p.id === pieceId)) {
+          movingColor = pl.color;
+          break;
+        }
+      }
+
+      const movingPiece = state.gameState.players
+        .flatMap(pl => pl.pieces)
+        .find(p => p.id === pieceId);
+
+      const steps = movingPiece ? getMovementPath(movingPiece, diceValue) : [];
+
+      // Mark piece as animating immediately
+      set({ animatingPieceId: pieceId, selectedPieceId: null });
+
+      const STEP_MS = 160; // ms per cell
+
+      const runSteps = (stepIndex: number) => {
+        if (stepIndex >= steps.length) {
+          // All steps done — apply final state
+          if (result.action === 'capture') {
+            soundManager.playCapture();
+            set({ lastCapturedPieceId: result.capturedPiece?.id || null });
+          } else if (result.action === 'enter') {
+            soundManager.playPieceEnter();
+          } else if (result.action === 'finish') {
+            soundManager.playPieceFinish();
+          }
+          if (result.gameState.phase === 'finished') soundManager.playVictory();
+
+          setTimeout(() => {
+            set({
+              gameState: result.gameState,
+              animatingPieceId: null,
+              stepAnimationPos: null,
+              showDiceResult: false,
+              lastCapturedPieceId: null,
+            });
+
+            if (result.gameState.phase === 'playing') {
+              const nextPlayer = result.gameState.players[result.gameState.currentPlayerIndex];
+              if (nextPlayer?.isBot) {
+                setTimeout(() => get().executeBotTurn(), 1000);
+              }
+            }
+          }, 120);
+          return;
+        }
+
+        const step = steps[stepIndex];
         soundManager.playPieceMove();
-      }
-
-      if (result.gameState.phase === 'finished') {
-        soundManager.playVictory();
-      }
-
-      setTimeout(() => {
         set({
-          gameState: result.gameState,
-          selectedPieceId: null,
-          animatingPieceId: null,
-          showDiceResult: false,
-          lastCapturedPieceId: null,
+          stepAnimationPos: {
+            pieceId,
+            trackPosition: step.trackPosition,
+            color: movingColor,
+          },
         });
 
-        if (result.gameState.phase === 'playing') {
-          const nextPlayer = result.gameState.players[result.gameState.currentPlayerIndex];
-          if (nextPlayer?.isBot) {
-            setTimeout(() => get().executeBotTurn(), 1000);
-          }
+        setTimeout(() => runSteps(stepIndex + 1), STEP_MS);
+      };
+
+      if (steps.length === 0) {
+        // Fallback (shouldn't happen) — instant move
+        if (result.action === 'capture') {
+          soundManager.playCapture();
+          set({ lastCapturedPieceId: result.capturedPiece?.id || null });
+        } else if (result.action === 'enter') {
+          soundManager.playPieceEnter();
+        } else if (result.action === 'finish') {
+          soundManager.playPieceFinish();
+        } else {
+          soundManager.playPieceMove();
         }
-      }, 400);
+        if (result.gameState.phase === 'finished') soundManager.playVictory();
+        setTimeout(() => {
+          set({
+            gameState: result.gameState,
+            selectedPieceId: null,
+            animatingPieceId: null,
+            stepAnimationPos: null,
+            showDiceResult: false,
+            lastCapturedPieceId: null,
+          });
+          if (result.gameState.phase === 'playing') {
+            const nextPlayer = result.gameState.players[result.gameState.currentPlayerIndex];
+            if (nextPlayer?.isBot) setTimeout(() => get().executeBotTurn(), 1000);
+          }
+        }, 400);
+      } else {
+        runSteps(0);
+      }
     } catch {
       // Invalid move, ignore
     }
@@ -539,6 +605,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       room: null,
       selectedPieceId: null,
       animatingPieceId: null,
+      stepAnimationPos: null,
       lastCapturedPieceId: null,
       showDiceResult: false,
     });

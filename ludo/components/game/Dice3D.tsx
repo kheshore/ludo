@@ -3,6 +3,8 @@
 import { useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '@/lib/store-game';
+import { useThemeStore } from '@/lib/store-theme';
+import { DICE_STYLES } from '@/lib/themes';
 import { COLOR_CONFIG, PlayerColor } from '@/lib/types';
 
 const DICE_FACES: Record<number, number[][]> = {
@@ -25,11 +27,17 @@ interface Dice3DProps {
 
 export default function Dice3D({ onRoll, disabled, currentColor = 'red' }: Dice3DProps) {
   const { gameState, showDiceResult } = useGameStore();
+  const { diceStyleId } = useThemeStore();
+  const diceStyle = DICE_STYLES[diceStyleId];
   const dice = gameState?.dice;
   const isRolling = dice?.isRolling ?? false;
   const value = dice?.value ?? 1;
   const colorConfig = COLOR_CONFIG[currentColor];
   const btnRef = useRef<HTMLButtonElement>(null);
+
+  const dotColorNormal = diceStyle.dotColor;
+  const dotColorSix =
+    diceStyle.dotColorSix === 'player' ? colorConfig.hex : diceStyle.dotColorSix;
 
   return (
     <div className="flex flex-col items-center gap-3 relative">
@@ -37,14 +45,15 @@ export default function Dice3D({ onRoll, disabled, currentColor = 'red' }: Dice3
         ref={btnRef}
         onClick={onRoll}
         disabled={disabled || isRolling}
-        className="relative w-20 h-20 rounded-2xl cursor-pointer select-none touch-manipulation"
+        className="relative w-20 h-20 cursor-pointer select-none touch-manipulation"
         style={{
-          background: 'linear-gradient(145deg, #ffffff, #e6e6e6)',
+          background: diceStyle.bodyBg,
+          borderRadius: diceStyle.bodyRadius,
           boxShadow: isRolling
-            ? `0 0 30px ${colorConfig.glow}, 0 8px 32px rgba(0,0,0,0.3)`
+            ? diceStyle.bodyRollingGlow.replace('{glow}', colorConfig.glow)
             : showDiceResult && value === 6
             ? `0 0 20px ${colorConfig.glow}, 0 4px 16px rgba(0,0,0,0.2)`
-            : '0 4px 16px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.8)',
+            : diceStyle.bodyShadow,
         }}
         whileTap={!disabled && !isRolling ? { scale: 0.9 } : undefined}
         animate={
@@ -82,7 +91,7 @@ export default function Dice3D({ onRoll, disabled, currentColor = 'red' }: Dice3
                     {ROLLING_SHOW[i] && (
                       <div
                         className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: colorConfig.hex }}
+                        style={{ backgroundColor: dotColorSix }}
                       />
                     )}
                   </motion.div>
@@ -99,11 +108,11 @@ export default function Dice3D({ onRoll, disabled, currentColor = 'red' }: Dice3
                         <motion.div
                           className="w-3.5 h-3.5 rounded-full shadow-sm"
                           style={{
-                            backgroundColor: value === 6 ? colorConfig.hex : '#1a1a1a',
+                            backgroundColor: value === 6 ? dotColorSix : dotColorNormal,
                             boxShadow:
                               value === 6
                                 ? `0 0 6px ${colorConfig.glow}`
-                                : 'inset 0 1px 2px rgba(0,0,0,0.3)',
+                                : diceStyle.dotShadow,
                           }}
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
@@ -120,7 +129,12 @@ export default function Dice3D({ onRoll, disabled, currentColor = 'red' }: Dice3
           </motion.div>
         </AnimatePresence>
 
-        <div className="absolute inset-0 rounded-2xl pointer-events-none dice-shine" />
+        {diceStyle.shine && (
+          <div
+            className="absolute inset-0 pointer-events-none dice-shine"
+            style={{ borderRadius: diceStyle.bodyRadius }}
+          />
+        )}
       </motion.button>
 
       <AnimatePresence>

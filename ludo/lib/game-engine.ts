@@ -539,6 +539,49 @@ export function getBotMove(player: Player, diceValue: number, allPlayers: Player
   return sorted[0].id;
 }
 
+// --- Step-by-step movement path ---
+
+/**
+ * Returns an ordered array of intermediate track positions a piece passes
+ * through when moving `diceValue` steps.  Each entry has the trackPosition
+ * and the corresponding piece state so the board can render it correctly.
+ *
+ * For a piece leaving home (diceValue === 6) the path starts at position 0
+ * (the start cell) and stays there (just 1 step).
+ *
+ * For an active piece the path is every integer position from
+ * (current + 1) up to (current + diceValue).
+ */
+export interface MovementStep {
+  trackPosition: number;
+  state: 'active' | 'finished';
+}
+
+export function getMovementPath(piece: Piece, diceValue: number): MovementStep[] {
+  const steps: MovementStep[] = [];
+
+  if (piece.state === 'home' && diceValue === 6) {
+    // Entering the board — single step to position 0
+    steps.push({ trackPosition: 0, state: 'active' });
+    return steps;
+  }
+
+  if (piece.state !== 'active') return steps;
+
+  const start = piece.trackPosition;
+  for (let i = 1; i <= diceValue; i++) {
+    const pos = start + i;
+    const capped = Math.min(pos, TOTAL_PATH_LENGTH - 1);
+    steps.push({
+      trackPosition: capped,
+      state: capped >= TOTAL_PATH_LENGTH - 1 ? 'finished' : 'active',
+    });
+    if (capped >= TOTAL_PATH_LENGTH - 1) break;
+  }
+
+  return steps;
+}
+
 // --- Utility ---
 
 export { MAIN_TRACK_COORDS, HOME_STRETCH_COORDS };

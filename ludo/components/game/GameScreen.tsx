@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import LudoBoard from './LudoBoard';
 import Dice3D from './Dice3D';
 import PlayerPanel from './PlayerPanel';
+import ThemeSettingsPanel from './ThemeSettingsPanel';
 import { useGameStore } from '@/lib/store-game';
 import { useAuthStore } from '@/lib/store-auth';
 import { COLOR_CONFIG } from '@/lib/types';
@@ -18,6 +19,7 @@ export default function GameScreen() {
   const room = useGameStore(s => s.room);
   const { user, updateStats } = useAuthStore();
   const [autoRoll, setAutoRoll] = useState(false);
+  const [showTheme, setShowTheme] = useState(false);
 
   const isMultiplayer = !!room;
   const currentPlayer = gameState?.players[gameState.currentPlayerIndex];
@@ -104,7 +106,14 @@ export default function GameScreen() {
   const canRoll = isMyTurn && gameState.dice.canRoll && !gameState.dice.isRolling;
 
   return (
-    <div className="flex flex-col h-full bg-linear-to-b from-gray-950 via-gray-900 to-gray-950">
+    <div
+      className="flex flex-col"
+      style={{
+        height: '100dvh',
+        background: 'radial-gradient(ellipse at 50% 30%, #1a1535 0%, #0a0a14 60%, #050508 100%)',
+        overflow: 'hidden',
+      }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-white/5">
         <button
@@ -127,9 +136,13 @@ export default function GameScreen() {
             {currentPlayer?.nickname}&apos;s turn
           </span>
         </div>
-        <div className="text-white/30 text-xs">
-          Turn {gameState.turnHistory.length + 1}
-        </div>
+        <button
+          onClick={() => setShowTheme(true)}
+          className="text-white/50 hover:text-white text-lg transition-colors"
+          title="Customize board & pawns"
+        >
+          🎨
+        </button>
       </div>
 
       {/* Players - Top */}
@@ -145,7 +158,10 @@ export default function GameScreen() {
       </div>
 
       {/* Board */}
-      <div className="flex-1 flex items-center justify-center px-2">
+      <div
+        className="flex-1 flex items-center justify-center px-3"
+        style={{ minHeight: 0, overflow: 'hidden' }}
+      >
         <LudoBoard />
       </div>
 
@@ -254,6 +270,8 @@ export default function GameScreen() {
           </motion.div>
         )}
       </AnimatePresence>
+      {/* Theme Settings Panel */}
+      <ThemeSettingsPanel isOpen={showTheme} onClose={() => setShowTheme(false)} />
     </div>
   );
 }
