@@ -42,7 +42,12 @@ function BoardThemeSwatch({ id, selected, onClick }: { id: BoardThemeId; selecte
         <div style={{ background: t.trackBg }} />
         <div style={{ background: t.homeYellow, borderRadius: '0 0 4px 0' }} />
       </div>
-      <span style={{ fontSize: 10, color: '#fff', fontWeight: selected ? 700 : 400, opacity: selected ? 1 : 0.7, letterSpacing: 0.2 }}>
+      <span style={{
+        fontSize: 10, fontWeight: selected ? 700 : 500, letterSpacing: 0.2,
+        color: '#fff',
+        textShadow: '0 1px 3px rgba(0,0,0,0.8), 0 0 6px rgba(0,0,0,0.6)',
+        opacity: selected ? 1 : 0.85,
+      }}>
         {t.emoji} {t.name}
       </span>
     </button>
@@ -80,6 +85,30 @@ function PawnPreview({ id, selected, onClick }: { id: PawnStyleId; selected: boo
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(255,255,255,0.5) 0%, transparent 50%, rgba(0,0,0,0.2) 100%)', borderRadius: '50%' }} />
         <div style={{ position: 'absolute', top: '20%', left: '20%', width: '25%', height: '25%', borderRadius: '50%', background: 'rgba(255,255,255,0.7)', filter: 'blur(2px)' }} />
       </div>
+    );
+
+    if (id === 'star') return (
+      <svg viewBox="0 0 24 24" style={{ width: 32, height: 32, filter: `drop-shadow(0 1px 3px ${color}88)` }}>
+        <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"
+          fill={color} stroke={dark} strokeWidth="0.8" />
+        <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"
+          fill="none" stroke={light} strokeWidth="0.5" opacity="0.6" />
+      </svg>
+    );
+
+    if (id === 'arrow') return (
+      <svg viewBox="0 0 24 24" style={{ width: 32, height: 32, filter: `drop-shadow(0 1px 3px ${color}88)` }}>
+        <path d="M12 2 L20 16 L12 13 L4 16 Z" fill={color} stroke={dark} strokeWidth="0.8" strokeLinejoin="round" />
+        <path d="M12 2 L16 12 L12 10.5 Z" fill={light} opacity="0.5" />
+      </svg>
+    );
+
+    if (id === 'crown') return (
+      <svg viewBox="0 0 24 24" style={{ width: 32, height: 32, filter: `drop-shadow(0 1px 3px ${color}88)` }}>
+        <path d="M2 18 L4 8 L8.5 13 L12 4 L15.5 13 L20 8 L22 18 Z" fill={color} stroke={dark} strokeWidth="0.8" strokeLinejoin="round" />
+        <rect x="2" y="17" width="20" height="3" rx="1" fill={dark} opacity="0.7" />
+        <path d="M12 4 L14 11 L12 9.5 L10 11 Z" fill={light} opacity="0.55" />
+      </svg>
     );
     return null;
   };
@@ -175,7 +204,7 @@ interface Props {
 }
 
 export default function ThemeSettingsPanel({ isOpen, onClose }: Props) {
-  const { boardThemeId, pawnStyleId, diceStyleId, setBoardTheme, setPawnStyle, setDiceStyle } = useThemeStore();
+  const { boardThemeId, pawnStyleId, diceStyleId, soundEnabled, volume, setBoardTheme, setPawnStyle, setDiceStyle, setSoundEnabled, setVolume } = useThemeStore();
 
   return (
     <AnimatePresence>
@@ -256,7 +285,7 @@ export default function ThemeSettingsPanel({ isOpen, onClose }: Props) {
             </div>
 
             {/* Dice Styles */}
-            <div style={{ padding: '12px 20px 20px' }}>
+            <div style={{ padding: '12px 20px 4px' }}>
               <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
                 Dice Style
               </p>
@@ -269,6 +298,67 @@ export default function ThemeSettingsPanel({ isOpen, onClose }: Props) {
                     onClick={() => setDiceStyle(id)}
                   />
                 ))}
+              </div>
+            </div>
+
+            {/* Sound Settings */}
+            <div style={{ padding: '12px 20px 24px' }}>
+              <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
+                Sound
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {/* Toggle row */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#fff', fontSize: 13, fontWeight: 500 }}>
+                    {soundEnabled ? '🔊' : '🔇'} Sound effects
+                  </span>
+                  {/* Toggle switch */}
+                  <button
+                    title={soundEnabled ? 'Mute sound' : 'Unmute sound'}
+                    onClick={() => setSoundEnabled(!soundEnabled)}
+                    style={{
+                      width: 44, height: 24,
+                      borderRadius: 12,
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: soundEnabled ? '#22c55e' : 'rgba(255,255,255,0.15)',
+                      position: 'relative',
+                      transition: 'background 0.2s',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <div style={{
+                      position: 'absolute',
+                      top: 3, left: soundEnabled ? 23 : 3,
+                      width: 18, height: 18,
+                      borderRadius: '50%',
+                      background: '#fff',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                      transition: 'left 0.2s',
+                    }} />
+                  </button>
+                </div>
+
+                {/* Volume slider — only shown when sound is on */}
+                {soundEnabled && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, width: 16, textAlign: 'center' }}>🔈</span>
+                    <input
+                      title="Volume"
+                      type="range"
+                      min={0} max={1} step={0.05}
+                      value={volume}
+                      onChange={(e) => setVolume(Number(e.target.value))}
+                      style={{
+                        flex: 1,
+                        height: 4,
+                        accentColor: '#22c55e',
+                        cursor: 'pointer',
+                      }}
+                    />
+                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, width: 16, textAlign: 'center' }}>🔊</span>
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>

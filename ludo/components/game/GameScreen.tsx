@@ -10,9 +10,12 @@ import LudoBoard from './LudoBoard';
 import Dice3D from './Dice3D';
 import PlayerPanel from './PlayerPanel';
 import ThemeSettingsPanel from './ThemeSettingsPanel';
+import ChatPanel from '@/components/chat/ChatPanel';
 import { useGameStore } from '@/lib/store-game';
 import { useAuthStore } from '@/lib/store-auth';
 import { COLOR_CONFIG } from '@/lib/types';
+import { useRoomChat } from '@/lib/use-chat';
+import { useChatStore } from '@/lib/store-chat';
 
 export default function GameScreen() {
   const { gameState, rollGameDice, resetGame } = useGameStore();
@@ -20,12 +23,20 @@ export default function GameScreen() {
   const { user, updateStats } = useAuthStore();
   const [autoRoll, setAutoRoll] = useState(false);
   const [showTheme, setShowTheme] = useState(false);
+  const [showChat, setShowChat] = useState(false);
 
   const isMultiplayer = !!room;
   const currentPlayer = gameState?.players[gameState.currentPlayerIndex];
   const isMyTurn = currentPlayer?.userId === user?.id;
   const myPlayer = gameState?.players.find(p => p.userId === user?.id);
   const colorConfig = currentPlayer ? COLOR_CONFIG[currentPlayer.color] : COLOR_CONFIG.red;
+
+  // ── Chat (SSE) ────────────────────────────────────────────
+  useRoomChat(room?.code);
+
+  // Unread chat badge — read code once so selector expression is stable
+  const roomCode = room?.code ?? '';
+  const unreadChat = useChatStore(s => s.unreadCounts[roomCode] ?? 0);
 
   // Multiplayer: poll game state every 1.5s
   useEffect(() => {
@@ -98,6 +109,12 @@ export default function GameScreen() {
             : 0,
         }),
       }).catch(() => { /* ignore */ });
+
+      // Clear room chat when game ends
+      if (room?.code) {
+        fetch(`/api/chat/${room.code}`, { method: 'DELETE' }).catch(() => { /* ignore */ });
+        useChatStore.getState().clearChannel(room.code);
+      }
     }
   }, [gameState?.phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -136,13 +153,34 @@ export default function GameScreen() {
             {currentPlayer?.nickname}&apos;s turn
           </span>
         </div>
-        <button
-          onClick={() => setShowTheme(true)}
-          className="text-white/50 hover:text-white text-lg transition-colors"
-          title="Customize board & pawns"
-        >
-          🎨
-        </button>
+        {/* Right-side controls */}
+        <div className="flex items-center gap-2">
+          {/* Chat button — multiplayer only */}
+          {isMultiplayer && (
+            <button
+              onClick={() => setShowChat(true)}
+              className="relative text-white/50 hover:text-white text-lg transition-colors"
+              title="Room Chat"
+            >
+              💬
+              {unreadChat > 0 && (
+                <span
+                  className="absolute -top-1 -right-1 flex items-center justify-center rounded-full text-white font-bold"
+                  style={{ background: '#ef4444', fontSize: 9, minWidth: 16, height: 16, padding: '0 3px' }}
+                >
+                  {unreadChat > 9 ? '9+' : unreadChat}
+                </span>
+              )}
+            </button>
+          )}
+          <button
+            onClick={() => setShowTheme(true)}
+            className="text-white/50 hover:text-white text-lg transition-colors"
+            title="Customize board & pawns"
+          >
+            🎨
+          </button>
+        </div>
       </div>
 
       {/* Players - Top */}
@@ -195,6 +233,7 @@ export default function GameScreen() {
           <span className={`w-2 h-2 rounded-full transition-colors ${autoRoll ? 'bg-green-400' : 'bg-white/20'}`} />
           Auto
         </button>
+
       </div>
 
       {/* Game Over Overlay */}
@@ -272,6 +311,17 @@ export default function GameScreen() {
       </AnimatePresence>
       {/* Theme Settings Panel */}
       <ThemeSettingsPanel isOpen={showTheme} onClose={() => setShowTheme(false)} />
+
+      {/* Room Chat Panel */}
+      {isMultiplayer && room?.code && user && (
+        <ChatPanel
+          isOpen={showChat}
+          onClose={() => setShowChat(false)}
+          roomCode={room.code}
+          myUserId={user.id}
+          myNickname={user.nickname}
+        />
+      )}
     </div>
   );
 }

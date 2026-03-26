@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import RoomModel from '@/lib/models/room.model';
-import { v4 as uuidv4 } from 'uuid';
+
 
 const PLAYER_COLORS = ['red', 'green', 'yellow', 'blue'];
 const DIAGONAL_MAP: Record<string, string> = { red: 'yellow', yellow: 'red', green: 'blue', blue: 'green' };
@@ -70,7 +70,7 @@ export async function POST(
 
       const botCount = room.players.filter(p => p.isBot).length;
       room.players.push({
-        userId: `bot-${uuidv4().slice(0, 8)}`,
+        userId: `bot-${crypto.randomUUID().slice(0, 8)}`,
         nickname: BOT_NAMES[botCount] || `Bot ${botCount + 1}`,
         slug: '',
         color: availableColor,

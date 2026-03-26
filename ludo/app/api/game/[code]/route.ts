@@ -16,7 +16,7 @@ import {
   getBotMove,
 } from '@/lib/game-engine';
 import type { GameState, PlayerColor } from '@/lib/types';
-import { v4 as uuidv4 } from 'uuid';
+
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -113,7 +113,7 @@ export async function POST(
 
       const players = room.players.map((rp) =>
         createPlayer(
-          uuidv4(),
+          crypto.randomUUID(),
           rp.nickname,
           rp.color as PlayerColor,
           rp.isBot ?? false,

@@ -137,7 +137,7 @@ export default function Dice3D({ onRoll, disabled, currentColor = 'red' }: Dice3
         )}
       </motion.button>
 
-      <AnimatePresence>
+      {/* <AnimatePresence>
         {!disabled && !isRolling && dice?.canRoll && (
           <motion.p
             className="text-xs font-medium"
@@ -149,7 +149,7 @@ export default function Dice3D({ onRoll, disabled, currentColor = 'red' }: Dice3
             Tap to roll
           </motion.p>
         )}
-      </AnimatePresence>
+      </AnimatePresence> */}
 
       <AnimatePresence>
         {showDiceResult && value === 6 && (

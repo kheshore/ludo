@@ -2,7 +2,7 @@
 // Service Worker - PWA offline support
 // ============================================================
 
-const CACHE_NAME = 'ludo-v1';
+const CACHE_NAME = 'ludo-v2';
 
 // Assets to pre-cache for offline use
 const PRECACHE_ASSETS = [
@@ -48,6 +48,9 @@ self.addEventListener('fetch', (event) => {
 
   // Skip API requests — always go to network
   if (url.pathname.startsWith('/api/')) return;
+
+  // Skip Next.js static chunks — they have content-hash names, no SW caching needed
+  if (url.pathname.startsWith('/_next/')) return;
 
   // For navigation requests (pages) — network first, fallback to cache
   if (request.mode === 'navigate') {

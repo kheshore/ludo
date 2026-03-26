@@ -20,7 +20,7 @@ import {
   getMovementPath,
 } from './game-engine';
 import { soundManager } from './sounds';
-import { v4 as uuidv4 } from 'uuid';
+
 
 interface GameStore {
   // Room state
@@ -225,7 +225,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
     // Board layout: Red=top-left, Green=top-right, Yellow=bottom-right, Blue=bottom-left
     // Diagonals: Red↔Yellow, Green↔Blue
     const playerColor: PlayerColor = 'red';
-    const player = createPlayer(uuidv4(), nickname, playerColor, false, userId, slug);
+    const player = createPlayer(crypto.randomUUID(), nickname, playerColor, false, userId, slug);
 
     const botNames = ['Bot Alpha', 'Bot Beta', 'Bot Gamma'];
     const botColors: PlayerColor[] = botCount === 1
@@ -233,7 +233,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       : ['green', 'yellow', 'blue'];  // all remaining for 4-player
 
     const bots = botColors.slice(0, botCount).map((color, i) =>
-      createPlayer(uuidv4(), botNames[i], color, true)
+      createPlayer(crypto.randomUUID(), botNames[i], color, true)
     );
 
     const gameState = createGameState([player, ...bots]);

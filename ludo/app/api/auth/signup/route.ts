@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import UserModel from '@/lib/models/user.model';
 import { generateSlug } from '@/lib/utils';
-import { v4 as uuidv4 } from 'uuid';
+
 import bcrypt from 'bcryptjs';
 
 export async function POST(req: NextRequest) {
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Username already taken' }, { status: 409 });
     }
 
-    const id = uuidv4();
+    const id = crypto.randomUUID();
     const slug = generateSlug(username);
     const passwordHash = await bcrypt.hash(password, 10);
 

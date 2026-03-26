@@ -18,37 +18,9 @@ import {
 import {
   getGridPosition,
   getMovablePieces,
-  MAIN_TRACK_COORDS,
-  HOME_STRETCH_COORDS,
 } from '@/lib/game-engine';
 
 const BOARD_GRID = 15;
-
-// ---- Track-position label lookup (row-col → display string) ----
-// Built once at module load — maps each track cell to the label shown in debug mode.
-
-function buildTrackLabelMap(): Map<string, string> {
-  const map = new Map<string, string>();
-  // Main track: absolute positions 0-51
-  MAIN_TRACK_COORDS.forEach((pos, absIdx) => {
-    const key = `${pos.row}-${pos.col}`;
-    // Store the first label if two colors share a cell (they don't on main track)
-    if (!map.has(key)) map.set(key, String(absIdx));
-  });
-  // Home stretch: per-color, index 0-4 (index 5 is center, handled separately)
-  const colors: PlayerColor[] = ['red', 'green', 'yellow', 'blue'];
-  colors.forEach(color => {
-    HOME_STRETCH_COORDS[color].forEach((pos, i) => {
-      if (i < 5) { // skip center
-        const key = `${pos.row}-${pos.col}`;
-        if (!map.has(key)) map.set(key, `h${i + 1}`);
-      }
-    });
-  });
-  return map;
-}
-
-const TRACK_LABEL_MAP = buildTrackLabelMap();
 
 // ---- Cell classification ----
 
@@ -267,6 +239,72 @@ function PieceToken({ color, isMovable, isSelected, isAnimating, size, offsetX, 
           }} />
         </>
       )}
+
+      {pawnStyle === 'star' && (
+        <svg
+          viewBox="0 0 24 24"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+        >
+          <polygon
+            points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"
+            fill={hex}
+            stroke={dark}
+            strokeWidth={isSelected || isMovable ? 1.5 : 0.8}
+            filter={isSelected ? `drop-shadow(0 0 3px ${glow})` : undefined}
+          />
+          <polygon
+            points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"
+            fill="none"
+            stroke={light}
+            strokeWidth={0.5}
+            opacity={0.6}
+          />
+        </svg>
+      )}
+
+      {pawnStyle === 'arrow' && (
+        <svg
+          viewBox="0 0 24 24"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+        >
+          {/* Arrow body */}
+          <path
+            d="M12 2 L20 16 L12 13 L4 16 Z"
+            fill={hex}
+            stroke={dark}
+            strokeWidth={isSelected || isMovable ? 1.5 : 0.8}
+            strokeLinejoin="round"
+            filter={isSelected ? `drop-shadow(0 0 3px ${glow})` : undefined}
+          />
+          {/* Highlight */}
+          <path
+            d="M12 2 L16 12 L12 10.5 Z"
+            fill={light}
+            opacity={0.5}
+          />
+        </svg>
+      )}
+
+      {pawnStyle === 'crown' && (
+        <svg
+          viewBox="0 0 24 24"
+          style={{ position: 'absolute', inset: 2, width: 'calc(100% - 4px)', height: 'calc(100% - 4px)' }}
+        >
+          {/* Crown shape */}
+          <path
+            d="M2 18 L4 8 L8.5 13 L12 4 L15.5 13 L20 8 L22 18 Z"
+            fill={hex}
+            stroke={dark}
+            strokeWidth={isSelected || isMovable ? 1.5 : 0.8}
+            strokeLinejoin="round"
+            filter={isSelected ? `drop-shadow(0 0 3px ${glow})` : undefined}
+          />
+          {/* Crown band */}
+          <rect x="2" y="17" width="20" height="3" rx="1" fill={dark} opacity={0.7} />
+          {/* Highlight */}
+          <path d="M12 4 L14 11 L12 9.5 L10 11 Z" fill={light} opacity={0.55} />
+        </svg>
+      )}
     </motion.div>
   );
 }
@@ -286,14 +324,13 @@ interface CellProps {
   theme: BoardTheme;
   pawnStyle: PawnStyleId;
   homeLayout: HomeLayout;
-  showNumbers: boolean;
   onPieceClick: (id: string) => void;
 }
 
 function BoardCell({
   row, col, pieces, isSafe, isCenter,
   homezoneColor, homeStretchColor,
-  selectedPieceId, animatingPieceId, theme, pawnStyle, homeLayout, showNumbers, onPieceClick,
+  selectedPieceId, animatingPieceId, theme, pawnStyle, homeLayout, onPieceClick,
 }: CellProps) {
 
   const renderPieces = () => (
@@ -429,28 +466,18 @@ function BoardCell({
       red: theme.stretchRed, green: theme.stretchGreen,
       yellow: theme.stretchYellow, blue: theme.stretchBlue,
     };
-    const stretchLabel = showNumbers ? TRACK_LABEL_MAP.get(`${row}-${col}`) : undefined;
     return (
       <div style={{
         background: stretchColors[homeStretchColor],
         border: `1px solid ${theme.trackBorder}`,
         position: 'relative',
       }}>
-        {stretchLabel !== undefined && (
-          <span style={{
-            position: 'absolute', top: 1, left: 1,
-            fontSize: '4.5px', fontWeight: 700,
-            color: '#6d28d9', lineHeight: 1,
-            pointerEvents: 'none', zIndex: 4,
-          }}>{stretchLabel}</span>
-        )}
         {renderPieces()}
       </div>
     );
   }
 
   // ── Track / regular white cell ──
-  const trackLabel = showNumbers ? TRACK_LABEL_MAP.get(`${row}-${col}`) : undefined;
   return (
     <div style={{ background: theme.trackBg, border: `1px solid ${theme.trackBorder}`, position: 'relative' }}>
       {isSafe && pieces.length === 0 && (
@@ -463,19 +490,6 @@ function BoardCell({
           pointerEvents: 'none',
           zIndex: 3,
         }} />
-      )}
-      {trackLabel !== undefined && (
-        <span style={{
-          position: 'absolute',
-          top: 1, left: 1,
-          fontSize: '4.5px',
-          fontWeight: 700,
-          color: trackLabel.startsWith('h') ? '#6d28d9' : 'rgba(0,0,0,0.55)',
-          lineHeight: 1,
-          pointerEvents: 'none',
-          zIndex: 4,
-          letterSpacing: '-0.2px',
-        }}>{trackLabel}</span>
       )}
       {renderPieces()}
     </div>
@@ -716,7 +730,7 @@ export default function LudoBoard() {
                 theme={theme}
                 pawnStyle={pawnStyleId}
                 homeLayout={theme.homeLayout}
-                showNumbers={theme.showNumbers}
+
                 onPieceClick={handlePieceClick}
               />
             );

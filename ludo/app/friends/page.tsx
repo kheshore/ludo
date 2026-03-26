@@ -1,7 +1,7 @@
 'use client';
 
 // ============================================================
-// Friends Page - Friend list, requests, add friends
+// Friends Page - Friend list, requests, add friends, DM
 // ============================================================
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -10,9 +10,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '@/lib/store-auth';
 import { useGameStore } from '@/lib/store-game';
 import BottomNav from '@/components/nav/BottomNav';
+import DirectMessageModal from '@/components/chat/DirectMessageModal';
 import { soundManager } from '@/lib/sounds';
 import { generateInviteLink } from '@/lib/utils';
 import { User } from '@/lib/types';
+import { useDMChat } from '@/lib/use-chat';
+import { useChatStore, dmChannelId } from '@/lib/store-chat';
 
 export default function FriendsPage() {
   const { user, getUserById, sendFriendRequest, acceptFriendRequest, declineFriendRequest, removeFriend, refreshUser } = useAuthStore();
@@ -23,6 +26,16 @@ export default function FriendsPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [friends, setFriends] = useState<User[]>([]);
   const [loadingFriends, setLoadingFriends] = useState(true);
+  const [dmTarget, setDmTarget] = useState<{ id: string; nickname: string } | null>(null);
+
+  // Subscribe to DM channel when a DM target is selected
+  useDMChat(user?.id, dmTarget?.id);
+
+  // Subscribe to total unread count so badges re-render when messages arrive,
+  // then read per-friend count imperatively (avoids unstable object selector).
+  useChatStore((s) => Object.values(s.unreadCounts).reduce((a, b) => a + b, 0));
+  const getUnreadCount = (friendId: string) =>
+    useChatStore.getState().unreadCounts[dmChannelId(user?.id ?? '', friendId)] ?? 0;
 
   useEffect(() => {
     if (!user) router.replace('/');
@@ -227,6 +240,19 @@ export default function FriendsPage() {
                 >
                   🎮 Invite
                 </button>
+                {/* DM button */}
+                <button
+                  onClick={() => { soundManager.playClick(); setDmTarget({ id: friend.id, nickname: friend.nickname }); }}
+                  className="relative px-2 py-1.5 rounded-lg bg-indigo-500/20 text-indigo-400 text-xs font-medium hover:bg-indigo-500/30 transition-colors"
+                  title={`Message ${friend.nickname}`}
+                >
+                  💬
+                  {(() => { const cnt = getUnreadCount(friend.id); return cnt > 0 ? (
+                    <span className="absolute -top-1 -right-1 flex items-center justify-center rounded-full bg-red-500 text-white font-bold" style={{ fontSize: 9, minWidth: 16, height: 16, padding: '0 3px' }}>
+                      {cnt > 9 ? '9+' : cnt}
+                    </span>
+                  ) : null; })()}
+                </button>
                 <button
                   onClick={async () => { await removeFriend(friend.id); soundManager.playClick(); await loadFriends(); }}
                   className="px-2 py-1.5 rounded-lg bg-white/5 text-white/30 text-xs hover:text-red-400 hover:bg-red-500/10 transition-colors"
@@ -240,6 +266,17 @@ export default function FriendsPage() {
       </div>
 
       <BottomNav />
+
+      {/* Direct Message Modal */}
+      {user && dmTarget && (
+        <DirectMessageModal
+          isOpen={!!dmTarget}
+          onClose={() => setDmTarget(null)}
+          myUserId={user.id}
+          targetUserId={dmTarget.id}
+          targetNickname={dmTarget.nickname}
+        />
+      )}
     </div>
   );
 }

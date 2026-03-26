@@ -147,39 +147,19 @@ export interface FriendRequest {
   status: 'pending' | 'accepted' | 'declined';
 }
 
-// --- Socket Events ---
-export interface ServerToClientEvents {
-  'room:updated': (room: Room) => void;
-  'room:player-joined': (player: RoomPlayer) => void;
-  'room:player-left': (userId: string) => void;
-  'game:state-updated': (state: GameState) => void;
-  'game:dice-rolled': (data: { playerId: string; value: number }) => void;
-  'game:piece-moved': (data: { pieceId: string; from: number; to: number }) => void;
-  'game:piece-captured': (data: { capturedPieceId: string; byPieceId: string }) => void;
-  'game:turn-changed': (data: { playerId: string }) => void;
-  'game:finished': (data: { winnerId: string; rankings: string[] }) => void;
-  'friend:request': (request: FriendRequest) => void;
-  'friend:online': (userId: string) => void;
-  'friend:offline': (userId: string) => void;
-  'ping:game-invite': (data: { fromNickname: string; roomCode: string }) => void;
-  'notification': (data: { type: string; message: string }) => void;
-}
+// --- Chat ---
+export type ChatScope = 'room' | 'dm';
 
-export interface ClientToServerEvents {
-  'room:create': (settings: RoomSettings) => void;
-  'room:join': (code: string) => void;
-  'room:leave': () => void;
-  'room:ready': () => void;
-  'room:start': () => void;
-  'room:kick': (userId: string) => void;
-  'game:roll-dice': () => void;
-  'game:move-piece': (pieceId: string) => void;
-  'game:skip-turn': () => void;
-  'friend:send-request': (targetSlug: string) => void;
-  'friend:accept': (fromUserId: string) => void;
-  'friend:decline': (fromUserId: string) => void;
-  'friend:remove': (userId: string) => void;
-  'ping:invite': (data: { targetUserId: string; roomCode: string }) => void;
+export interface ChatMessage {
+  id: string;
+  scope: ChatScope;
+  /** roomCode for group chat, or sorted pair "uid1:uid2" for DM */
+  channelId: string;
+  senderId: string;
+  senderNickname: string;
+  senderSlug: string;
+  text: string;
+  timestamp: number;
 }
 
 // --- Board Constants ---

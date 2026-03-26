@@ -3,7 +3,7 @@
 // Deterministic, stateless, pure functions
 // ============================================================
 
-import { v4 as uuidv4 } from 'uuid';
+
 import {
   GameState,
   Player,
@@ -52,7 +52,7 @@ export function createPlayer(
 
 export function createGameState(players: Player[]): GameState {
   return {
-    id: uuidv4(),
+    id: crypto.randomUUID(),
     phase: 'playing',
     players,
     currentPlayerIndex: 0,

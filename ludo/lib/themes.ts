@@ -2,8 +2,8 @@
 // Ludo – Board & Pawn Theme Definitions
 // ============================================================
 
-export type BoardThemeId = 'classic' | 'wood' | 'neon' | 'ocean' | 'debug';
-export type PawnStyleId  = 'coin' | 'flat' | 'crystal';
+export type BoardThemeId = 'classic' | 'wood' | 'neon' | 'ocean' | 'marble' | 'candy' | 'forest';
+export type PawnStyleId  = 'coin' | 'flat' | 'crystal' | 'star' | 'arrow' | 'crown';
 export type HomeLayout   = 'four-slot' | 'single-box';
 
 export interface BoardTheme {
@@ -11,7 +11,6 @@ export interface BoardTheme {
   name: string;
   emoji: string;
   // optional features
-  showNumbers: boolean;   // show track position numbers on each cell
   homeLayout: HomeLayout; // 'four-slot' = 4 circles | 'single-box' = one big box
   // track / white cells
   trackBg: string;
@@ -45,7 +44,6 @@ export const BOARD_THEMES: Record<BoardThemeId, BoardTheme> = {
     id: 'classic',
     name: 'Classic',
     emoji: '♟️',
-    showNumbers: false,
     homeLayout: 'four-slot',
     trackBg: '#ffffff',
     trackBorder: 'rgba(0,0,0,0.13)',
@@ -70,7 +68,6 @@ export const BOARD_THEMES: Record<BoardThemeId, BoardTheme> = {
     id: 'wood',
     name: 'Wood',
     emoji: '🪵',
-    showNumbers: false,
     homeLayout: 'four-slot',
     trackBg: '#f5e6c8',
     trackBorder: '#c8a96a',
@@ -95,7 +92,6 @@ export const BOARD_THEMES: Record<BoardThemeId, BoardTheme> = {
     id: 'neon',
     name: 'Neon',
     emoji: '⚡',
-    showNumbers: false,
     homeLayout: 'four-slot',
     trackBg: '#0f0f1a',
     trackBorder: 'rgba(255,255,255,0.08)',
@@ -120,7 +116,6 @@ export const BOARD_THEMES: Record<BoardThemeId, BoardTheme> = {
     id: 'ocean',
     name: 'Ocean',
     emoji: '🌊',
-    showNumbers: false,
     homeLayout: 'four-slot',
     trackBg: '#e8f4fd',
     trackBorder: '#a8d4f0',
@@ -141,30 +136,77 @@ export const BOARD_THEMES: Record<BoardThemeId, BoardTheme> = {
     boardRadius: 10,
     boardBg: '#c9e8f8',
   },
-  debug: {
-    id: 'debug',
-    name: 'Debug',
-    emoji: '🔢',
-    showNumbers: true,
-    homeLayout: 'single-box',
-    trackBg: '#f8f8f8',
-    trackBorder: 'rgba(0,0,0,0.18)',
-    trackSafeMarker: 'rgba(0,180,0,0.25)',
-    homeRed: '#ef4444',
-    homeGreen: '#22c55e',
-    homeYellow: '#eab308',
-    homeBlue: '#3b82f6',
-    homeInnerBg: '#ffffff',
-    homeInnerBorder: 'rgba(0,0,0,0.15)',
-    stretchRed: '#fca5a5',
-    stretchGreen: '#86efac',
-    stretchYellow: '#fde047',
-    stretchBlue: '#93c5fd',
-    centerBg: '#f0f0f0',
-    boardBorder: '#666',
-    boardShadow: '0 4px 16px rgba(0,0,0,0.3)',
-    boardRadius: 4,
-    boardBg: '#e0e0e0',
+  marble: {
+    id: 'marble',
+    name: 'Marble',
+    emoji: '🪨',
+    homeLayout: 'four-slot',
+    trackBg: '#f5f0eb',
+    trackBorder: '#d4c5b5',
+    trackSafeMarker: 'rgba(100,80,60,0.25)',
+    homeRed: '#c0392b',
+    homeGreen: '#27ae60',
+    homeYellow: '#d4ac0d',
+    homeBlue: '#2471a3',
+    homeInnerBg: '#faf7f4',
+    homeInnerBorder: '#d4c5b5',
+    stretchRed: '#c0392b',
+    stretchGreen: '#27ae60',
+    stretchYellow: '#d4ac0d',
+    stretchBlue: '#2471a3',
+    centerBg: '#e8ddd0',
+    boardBorder: '#8d7b6a',
+    boardShadow: '0 8px 32px rgba(80,60,40,0.45), 0 2px 12px rgba(0,0,0,0.2)',
+    boardRadius: 6,
+    boardBg: '#d6c9ba',
+  },
+  candy: {
+    id: 'candy',
+    name: 'Candy',
+    emoji: '🍭',
+    homeLayout: 'four-slot',
+    trackBg: '#fff0f8',
+    trackBorder: '#f9c0e0',
+    trackSafeMarker: 'rgba(255,100,160,0.30)',
+    homeRed: '#ff4d8d',
+    homeGreen: '#00cc88',
+    homeYellow: '#ffcc00',
+    homeBlue: '#6699ff',
+    homeInnerBg: '#fff5fb',
+    homeInnerBorder: '#f9c0e0',
+    stretchRed: '#ff4d8d',
+    stretchGreen: '#00cc88',
+    stretchYellow: '#ffcc00',
+    stretchBlue: '#6699ff',
+    centerBg: '#ffd6ee',
+    boardBorder: '#ff80bb',
+    boardShadow: '0 8px 32px rgba(255,100,160,0.35), 0 2px 12px rgba(0,0,0,0.15)',
+    boardRadius: 16,
+    boardBg: '#ffe8f5',
+  },
+  forest: {
+    id: 'forest',
+    name: 'Forest',
+    emoji: '🌲',
+    homeLayout: 'four-slot',
+    trackBg: '#f0f7ee',
+    trackBorder: '#8fbc8f',
+    trackSafeMarker: 'rgba(34,85,34,0.25)',
+    homeRed: '#c0392b',
+    homeGreen: '#1a7a1a',
+    homeYellow: '#b8860b',
+    homeBlue: '#2e5fa3',
+    homeInnerBg: '#e8f5e3',
+    homeInnerBorder: '#8fbc8f',
+    stretchRed: '#c0392b',
+    stretchGreen: '#1a7a1a',
+    stretchYellow: '#b8860b',
+    stretchBlue: '#2e5fa3',
+    centerBg: '#c8e6c0',
+    boardBorder: '#3d6b3d',
+    boardShadow: '0 8px 32px rgba(30,80,30,0.4), 0 2px 12px rgba(0,0,0,0.25)',
+    boardRadius: 10,
+    boardBg: '#4a7c4a',
   },
 };
 
@@ -193,6 +235,24 @@ export const PAWN_STYLES: Record<PawnStyleId, PawnStyle> = {
     name: 'Crystal',
     emoji: '💎',
     description: 'Faceted gem with inner glow',
+  },
+  star: {
+    id: 'star',
+    name: 'Star',
+    emoji: '⭐',
+    description: '5-point star shape with shimmer',
+  },
+  arrow: {
+    id: 'arrow',
+    name: 'Arrow',
+    emoji: '🔺',
+    description: 'Upward arrow — sharp & directional',
+  },
+  crown: {
+    id: 'crown',
+    name: 'Crown',
+    emoji: '👑',
+    description: 'Royal crown — fit for a champion',
   },
 };
 

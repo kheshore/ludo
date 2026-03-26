@@ -2,14 +2,14 @@
 // Utility functions
 // ============================================================
 
-import { v4 as uuidv4 } from 'uuid';
+
 
 export function generateSlug(username: string): string {
   const base = username
     .toLowerCase()
     .replace(/[^a-z0-9]/g, '')
     .slice(0, 12);
-  const suffix = uuidv4().slice(0, 4);
+  const suffix = crypto.randomUUID().slice(0, 4);
   return `${base}-${suffix}`;
 }
 
