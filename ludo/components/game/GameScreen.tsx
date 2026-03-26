@@ -4,7 +4,7 @@
 // GameScreen - Main game view with board, dice, and player panels
 // ============================================================
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import LudoBoard from './LudoBoard';
 import Dice3D from './Dice3D';
@@ -24,6 +24,8 @@ export default function GameScreen() {
   const [autoRoll, setAutoRoll] = useState(false);
   const [showTheme, setShowTheme] = useState(false);
   const [showChat, setShowChat] = useState(false);
+
+  const historyRecordedRef = useRef(false);
 
   const isMultiplayer = !!room;
   const currentPlayer = gameState?.players[gameState.currentPlayerIndex];
@@ -69,7 +71,8 @@ export default function GameScreen() {
 
   // Update stats and record game history when game finishes
   useEffect(() => {
-    if (gameState?.phase === 'finished' && myPlayer && user) {
+    if (gameState?.phase === 'finished' && myPlayer && user && !historyRecordedRef.current) {
+      historyRecordedRef.current = true;
       const isWinner = gameState.winner === myPlayer.id;
       void updateStats({
         gamesPlayed: user.stats.gamesPlayed + 1,

@@ -288,10 +288,56 @@ export const useGameStore = create<GameStore>()((set, get) => ({
               // Player must pick a piece — apply server state immediately
               set({ gameState: serverGs, showDiceResult: true });
             } else {
-              // Auto-moved/skipped — show result briefly then apply
-              setTimeout(() => {
-                set({ gameState: serverGs, showDiceResult: false });
-              }, 800);
+              // Server already auto-moved (or skipped). Animate locally then apply serverGs
+              // without sending another move request to the server.
+              const localGs = get().gameState;
+              let movedId: string | null = null;
+              let prePiece: import('./types').Piece | null = null;
+              let preColor: PlayerColor | null = null;
+              if (localGs) {
+                outer: for (const serverPlayer of serverGs.players) {
+                  const localPlayer = localGs.players.find(p => p.id === serverPlayer.id);
+                  if (!localPlayer) continue;
+                  for (let pi = 0; pi < serverPlayer.pieces.length; pi++) {
+                    const after = serverPlayer.pieces[pi];
+                    const before = localPlayer.pieces[pi];
+                    if (!before) continue;
+                    if (
+                      (before.state === 'home' && after.state === 'active') ||
+                      (before.state === 'active' && after.trackPosition > before.trackPosition) ||
+                      (before.state === 'active' && after.state === 'finished')
+                    ) { movedId = after.id; prePiece = before; preColor = serverPlayer.color; break outer; }
+                  }
+                }
+              }
+              if (movedId && prePiece && preColor) {
+                const postPiece = serverGs.players.flatMap(p => p.pieces).find(p => p.id === movedId);
+                const dv = prePiece.state === 'home' ? 6 : Math.max(1, (postPiece?.trackPosition ?? 0) - prePiece.trackPosition);
+                const steps = getMovementPath(prePiece, dv);
+                if (steps.length > 0) {
+                  set({ animatingPieceId: movedId, selectedPieceId: null });
+                  const STEP_MS = 110;
+                  let si = 0;
+                  const runAutoSteps = () => {
+                    if (si >= steps.length) {
+                      if (prePiece!.state === 'home') soundManager.playPieceEnter();
+                      else if (steps[steps.length - 1].state === 'finished') soundManager.playPieceFinish();
+                      setTimeout(() => set({ gameState: serverGs, animatingPieceId: null, stepAnimationPos: null, showDiceResult: false }), 120);
+                      return;
+                    }
+                    soundManager.playPieceMove();
+                    set({ stepAnimationPos: { pieceId: movedId!, trackPosition: steps[si].trackPosition, color: preColor! } });
+                    si++;
+                    setTimeout(runAutoSteps, STEP_MS);
+                  };
+                  runAutoSteps();
+                } else {
+                  setTimeout(() => set({ gameState: serverGs, showDiceResult: false }), 400);
+                }
+              } else {
+                // Turn skipped or no piece moved
+                setTimeout(() => set({ gameState: serverGs, showDiceResult: false }), 800);
+              }
             }
           } else {
             // Server rejected the roll — always reset isRolling so dice stops blinking
@@ -345,16 +391,32 @@ export const useGameStore = create<GameStore>()((set, get) => ({
             set({ gameState: skipped, showDiceResult: false });
             const nextPlayer = skipped.players[skipped.currentPlayerIndex];
             if (nextPlayer?.isBot && skipped.phase === 'playing') {
-              setTimeout(() => get().executeBotTurn(), 800);
+              setTimeout(() => get().executeBotTurn(), 400);
             }
           }
-        }, 1200);
+        }, 700);
       } else if (movable.length === 1) {
-        setTimeout(() => { get().movePiece(movable[0].id); }, 600);
+        // Strict auto-move queue: only trigger after animation and state update
+        const doAutoMove = () => {
+          const s = get();
+          if (s.animatingPieceId || s.stepAnimationPos) {
+            setTimeout(doAutoMove, 60);
+            return;
+          }
+          if (s.room && s.room.code && s.getCurrentPlayer) {
+            const currentPlayer = s.getCurrentPlayer();
+            if (currentPlayer?.userId) {
+              get().movePiece(movable[0].id, currentPlayer.userId);
+              return;
+            }
+          }
+          get().movePiece(movable[0].id);
+        };
+        setTimeout(doAutoMove, 350);
       } else if (player.isBot) {
         const botPieceId = getBotMove(player, value, currentState.gameState.players);
         if (botPieceId) {
-          setTimeout(() => { get().movePiece(botPieceId); }, 600);
+          setTimeout(() => { get().movePiece(botPieceId); }, 350);
         }
       }
     }, 700);
@@ -368,38 +430,82 @@ export const useGameStore = create<GameStore>()((set, get) => ({
     const state = get();
     if (!state.gameState) return;
 
-    // --- MULTIPLAYER: route through server ---
+    // --- MULTIPLAYER: run local step animation then apply server result ---
     if (state.room && userId) {
-      set({ animatingPieceId: pieceId });
-      soundManager.playPieceMove();
+      const diceValueMP = state.gameState.dice.value;
+      const movingPieceMP = state.gameState.players
+        .flatMap(pl => pl.pieces)
+        .find(p => p.id === pieceId);
+      let movingColorMP: import('./types').PlayerColor = 'red';
+      for (const pl of state.gameState.players) {
+        if (pl.pieces.find(p => p.id === pieceId)) { movingColorMP = pl.color; break; }
+      }
+      const stepsMP = movingPieceMP ? getMovementPath(movingPieceMP, diceValueMP) : [];
 
-      fetch(`/api/game/${state.room.code}`, {
+      set({ animatingPieceId: pieceId, selectedPieceId: null });
+
+      // Fire the server request immediately (runs in parallel with animation)
+      const serverPromise = fetch(`/api/game/${state.room.code}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'move', userId, pieceId }),
-      })
-        .then(r => r.json())
-        .then(data => {
-          if (data.success) {
-            const serverGs = data.gameState as GameState;
-            if (data.moveAction === 'capture') soundManager.playCapture();
-            if (data.moveAction === 'finish') soundManager.playPieceFinish();
-            if (serverGs.phase === 'finished') soundManager.playVictory();
+      }).then(r => r.json());
 
-            setTimeout(() => {
-              set({
-                gameState: serverGs,
-                selectedPieceId: null,
-                animatingPieceId: null,
-                showDiceResult: false,
-                lastCapturedPieceId: null,
-              });
-            }, 300);
-          }
-        })
-        .catch(() => {
-          set({ animatingPieceId: null });
+      const STEP_MS = 110;
+
+      const applyServerResult = (data: { success: boolean; gameState: GameState; moveAction?: string }) => {
+        if (!data.success) { set({ animatingPieceId: null }); return; }
+        const serverGs = data.gameState as GameState;
+        if (data.moveAction === 'capture') soundManager.playCapture();
+        if (data.moveAction === 'finish') soundManager.playPieceFinish();
+        if (serverGs.phase === 'finished') soundManager.playVictory();
+        set({
+          gameState: serverGs,
+          selectedPieceId: null,
+          animatingPieceId: null,
+          stepAnimationPos: null,
+          showDiceResult: false,
+          lastCapturedPieceId: null,
         });
+        // After applying server state, check if another auto-move is needed
+        setTimeout(() => {
+          const s = get();
+          if (!s.gameState || !s.room || !s.getCurrentPlayer) return;
+          // Only auto-move if the dice has already been rolled (canRoll=false)
+          if (s.gameState.dice.canRoll) return;
+          const player = s.getCurrentPlayer();
+          if (!player || player.hasFinished) return;
+          const value = s.gameState.dice.value;
+          const movable = getMovablePieces(player, value, s.gameState.players);
+          if (movable.length === 1 && !s.animatingPieceId && !s.stepAnimationPos) {
+            get().movePiece(movable[0].id, player.userId);
+          }
+        }, 80);
+      };
+
+      if (stepsMP.length === 0) {
+        soundManager.playPieceMove();
+        serverPromise
+          .then(data => setTimeout(() => applyServerResult(data), 300))
+          .catch(() => set({ animatingPieceId: null, stepAnimationPos: null }));
+        return;
+      }
+
+      const runStepsMP = (stepIndex: number) => {
+        if (stepIndex >= stepsMP.length) {
+          // Animation done — wait for server result then apply
+          serverPromise
+            .then(data => setTimeout(() => applyServerResult(data), 80))
+            .catch(() => set({ animatingPieceId: null, stepAnimationPos: null }));
+          return;
+        }
+        const step = stepsMP[stepIndex];
+        soundManager.playPieceMove();
+        set({ stepAnimationPos: { pieceId, trackPosition: step.trackPosition, color: movingColorMP } });
+        setTimeout(() => runStepsMP(stepIndex + 1), STEP_MS);
+      };
+
+      runStepsMP(0);
       return;
     }
 
@@ -427,7 +533,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       // Mark piece as animating immediately
       set({ animatingPieceId: pieceId, selectedPieceId: null });
 
-      const STEP_MS = 160; // ms per cell
+      const STEP_MS = 110; // ms per cell
 
       const runSteps = (stepIndex: number) => {
         if (stepIndex >= steps.length) {
@@ -548,22 +654,82 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       console.log(`[pollGameState] code=${code} success=${data.success} status=${data.status} hasGs=${!!data.gameState}`);
       if (data.success && data.gameState) {
         const current = get().gameState;
-        // Only update if server state is newer (based on updatedAt) or we have no local state
         const serverGs = data.gameState as GameState;
-        // Sanitise: server should never persist isRolling=true, but defend against it
         const sanitised: GameState = {
           ...serverGs,
           dice: { ...serverGs.dice, isRolling: false },
         };
         if (!current || !current.updatedAt || sanitised.updatedAt >= current.updatedAt) {
-          // Only overwrite if we are NOT in the middle of a local roll animation
           const localIsRolling = current?.dice.isRolling ?? false;
-          if (!localIsRolling) {
-            set({ gameState: sanitised });
+          const localIsAnimating = !!get().animatingPieceId;
+          if (!localIsRolling && !localIsAnimating) {
+            // Find a piece that moved forward — animate it step by step.
+            // Our own moves are already applied via applyServerResult, so they won't
+            // show a diff here; no need to filter by userId.
+            let movedPieceId: string | null = null;
+            let prePiece: import('./types').Piece | null = null;
+            let movedColor: PlayerColor | null = null;
+
+            if (current) {
+              for (const player of sanitised.players) {
+                const prevPlayer = current.players.find(p => p.id === player.id);
+                if (!prevPlayer) continue;
+                for (let pi = 0; pi < player.pieces.length; pi++) {
+                  const piece = player.pieces[pi];
+                  const prevPiece = prevPlayer.pieces[pi];
+                  if (!prevPiece) continue;
+                  const isForwardMove =
+                    (prevPiece.state === 'home' && piece.state === 'active') ||
+                    (prevPiece.state === 'active' && piece.trackPosition > prevPiece.trackPosition) ||
+                    (prevPiece.state === 'active' && piece.state === 'finished');
+                  if (isForwardMove) {
+                    movedPieceId = piece.id;
+                    prePiece = prevPiece;
+                    movedColor = player.color;
+                    break;
+                  }
+                }
+                if (movedPieceId) break;
+              }
+            }
+
+            if (movedPieceId && prePiece && movedColor) {
+              let diceValue: number;
+              if (prePiece.state === 'home') {
+                diceValue = 6;
+              } else {
+                const postPiece = sanitised.players.flatMap(p => p.pieces).find(p => p.id === movedPieceId);
+                diceValue = postPiece ? postPiece.trackPosition - prePiece.trackPosition : 6;
+                if (diceValue <= 0) diceValue = 6;
+              }
+
+              const steps = getMovementPath(prePiece, diceValue);
+              if (steps.length > 0) {
+                set({ animatingPieceId: movedPieceId, selectedPieceId: null });
+                const STEP_MS = 110;
+                let stepIndex = 0;
+                const runOpponentSteps = () => {
+                  if (stepIndex >= steps.length) {
+                    setTimeout(() => {
+                      set({ gameState: sanitised, animatingPieceId: null, stepAnimationPos: null, showDiceResult: false });
+                    }, 120);
+                    return;
+                  }
+                  const step = steps[stepIndex];
+                  set({ stepAnimationPos: { pieceId: movedPieceId!, trackPosition: step.trackPosition, color: movedColor! } });
+                  stepIndex++;
+                  setTimeout(runOpponentSteps, STEP_MS);
+                };
+                runOpponentSteps();
+              } else {
+                set({ gameState: sanitised });
+              }
+            } else {
+              set({ gameState: sanitised });
+            }
           }
         }
       }
-      // Always update room status if available (even if gameState is unchanged)
       if (data.success && data.status) {
         const room = get().room;
         if (room && room.status !== data.status) {

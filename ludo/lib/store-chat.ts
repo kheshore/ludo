@@ -36,6 +36,8 @@ export const useChatStore = create<ChatStore>()((set) => ({
   receiveMessage: (msg) => {
     set((state) => {
       const msgs = state.channels[msg.channelId] ?? [];
+      // Deduplicate by id — SSE reconnects re-send history, Vercel spins up fresh instances
+      if (msgs.some(m => m.id === msg.id)) return state;
       const unread = state.unreadCounts[msg.channelId] ?? 0;
       return {
         channels: { ...state.channels, [msg.channelId]: [...msgs, msg] },

@@ -156,6 +156,9 @@ export async function POST(
       }
 
       const value = rollDice();
+      let lastMove = null;
+      let startX = null, startY = null, endX = null, endY = null;
+      let movedPiece = null;
       gs = {
         ...gs,
         dice: { ...gs.dice, value, isRolling: false, canRoll: false },
@@ -166,12 +169,30 @@ export async function POST(
       if (movable.length === 0) {
         // No moves → skip
         gs = handleSkipTurn(gs);
-        // Run bot turns if next player is bot
         gs = runBotTurns(gs);
       } else if (movable.length === 1) {
         // Auto-move single option
+        // Get start position
+        const piece = cur.pieces.find(p => p.id === movable[0].id);
+        if (piece) {
+          // Use getGridPosition from game-engine
+          const { getGridPosition } = require("@/lib/game-engine");
+          const start = getGridPosition(piece.trackPosition, cur.color);
+          startX = start != null ? start.col.toString().padStart(2, '0') : null;
+          startY = start != null ? start.row.toString().padStart(2, '0') : null;
+        }
         const result = executeMove(gs, movable[0].id, value);
         gs = result.gameState;
+        // Get end position
+        const movedPiece = gs.players.flatMap(p => p.pieces).find(p => p.id === movable[0].id);
+        if (movedPiece) {
+          const { getGridPosition } = require("@/lib/game-engine");
+          const movedPlayer = gs.players.find(p => p.pieces.some(pc => pc.id === movedPiece.id));
+          const end = getGridPosition(movedPiece.trackPosition, movedPlayer?.color ?? cur.color);
+          endX = end != null ? end.col.toString().padStart(2, '0') : null;
+          endY = end != null ? end.row.toString().padStart(2, '0') : null;
+        }
+        lastMove = piece ? `${cur.color[0].toUpperCase()}${piece.index + 1}${startX}${startY}${endX}${endY}` : null;
         gs = runBotTurns(gs);
       }
       // else: >1 movable → client must call 'move' next
@@ -186,6 +207,7 @@ export async function POST(
         gameState: gs,
         diceValue: value,
         needsMove: movable.length > 1,
+        lastMove,
       });
     }
 
@@ -200,8 +222,29 @@ export async function POST(
       }
 
       try {
+        // Get start position
+        let lastMove = null;
+        let startX = null, startY = null, endX = null, endY = null;
+        const curPlayer = gs.players[gs.currentPlayerIndex];
+        const piece = curPlayer.pieces.find(p => p.id === pieceId);
+        if (piece) {
+          const { getGridPosition } = require("@/lib/game-engine");
+          const start = getGridPosition(piece.trackPosition, curPlayer.color);
+          startX = start != null ? start.col.toString().padStart(2, '0') : null;
+          startY = start != null ? start.row.toString().padStart(2, '0') : null;
+        }
         const result = executeMove(gs, pieceId, gs.dice.value);
         gs = result.gameState;
+        // Get end position
+        const movedPiece = gs.players.flatMap(p => p.pieces).find(p => p.id === pieceId);
+        if (movedPiece) {
+          const { getGridPosition } = require("@/lib/game-engine");
+          const movedPlayer = gs.players.find(p => p.pieces.some(pc => pc.id === movedPiece.id));
+          const end = getGridPosition(movedPiece.trackPosition, movedPlayer?.color ?? curPlayer.color);
+          endX = end != null ? end.col.toString().padStart(2, '0') : null;
+          endY = end != null ? end.row.toString().padStart(2, '0') : null;
+        }
+        lastMove = piece ? `${curPlayer.color[0].toUpperCase()}${piece.index + 1}${startX}${startY}${endX}${endY}` : null;
         gs = runBotTurns(gs);
 
         room.gameState = gs as unknown as Record<string, unknown>;
@@ -213,6 +256,7 @@ export async function POST(
           success: true,
           gameState: gs,
           moveAction: result.action,
+          lastMove,
         });
       } catch {
         return NextResponse.json({ success: false, error: 'Invalid move' }, { status: 400 });

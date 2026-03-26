@@ -634,7 +634,9 @@ export default function LudoBoard() {
   const currentPlayer = gameState.players[gameState.currentPlayerIndex];
   const isMyTurn = currentPlayer?.userId === user?.id;
   const diceValue = gameState.dice.value;
-  const movablePieces = isMyTurn && !gameState.dice.isRolling && !gameState.dice.canRoll
+  // Show movable pieces when: it's my turn, dice has been rolled (not rolling, not canRoll),
+  // AND no piece is currently animating (animatingPieceId would cover it)
+  const movablePieces = isMyTurn && !gameState.dice.isRolling && !gameState.dice.canRoll && !animatingPieceId
     ? getMovablePieces(currentPlayer, diceValue, gameState.players)
     : [];
   const movablePieceIds = new Set(movablePieces.map(p => p.id));
@@ -695,12 +697,22 @@ export default function LudoBoard() {
           aspectRatio: '1',
           position: 'relative',
           borderRadius: theme.boardRadius,
-          overflow: 'hidden',
+          // No overflow:hidden here — that was clipping pieces in edge cells (col 0, col 14, row 0, row 14)
+          // The decorative frame is applied via a non-interactive overlay div below
           boxShadow: theme.boardShadow,
           border: `3px solid ${theme.boardBorder}`,
           background: theme.boardBg,
         }}
       >
+        {/* Non-interactive rounded frame overlay — keeps visual border-radius without clipping pieces */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          borderRadius: theme.boardRadius,
+          pointerEvents: 'none',
+          zIndex: 100,
+          boxShadow: `inset 0 0 0 3px ${theme.boardBorder}`,
+          overflow: 'hidden',
+        }} />
         {/* 15x15 Grid */}
         <div
           style={{
